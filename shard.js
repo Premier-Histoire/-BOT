@@ -1,9 +1,11 @@
 //Packages & Helpful Tools
 
-const { Client, GatewayIntentBits, Collection, Events } = require("discord.js");
+const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require("discord.js");
 const { readdir } = require('node:fs');
 const Logger = require('terminal.xr');
 const { Axios } = require("axios");
+const fs = require('fs');
+const path = require('path');
 const wait = require('delay');
 const { botId } = require('./config');
 require('dotenv/config');
@@ -12,7 +14,8 @@ require('dotenv/config');
 
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildEmojisAndStickers
     ]
 });
 const logger = new Logger();
@@ -156,3 +159,43 @@ client
             else logger.error(`[Shard ${shard}] [Events/InteractionCreate/Autocomplete] ${name} command could not found`);
         };
     });
+
+client.on('ready', () => {
+    setInterval(() => {
+        const serverCount = client.guilds.cache.size;
+        console.log("Bot has started and is in the following servers:");
+        client.guilds.cache.forEach(guild => {
+            console.log(`${guild.name} (id: ${guild.id})`);
+        });
+        client.user.setPresence({ activities: [{ name: `${serverCount} servers`, type: ActivityType.Watching }], status: 'online', });
+    }, 600000); // 1分ごとに更新。必要に応じて間隔を調整してください。
+});
+
+const EMOJI_DIR = './emojis/';
+client.on('guildCreate', async (guild) => {
+    try {
+        const files = fs.readdirSync(EMOJI_DIR);
+
+        for (const file of files) {
+            const filePath = path.join(EMOJI_DIR, file);
+            const emojiName = path.parse(file).name;
+            console.log(file)
+            console.log(emojiName)
+
+            if (['.png', '.jpg', '.jpeg', '.gif'].includes(path.extname(file))) {
+                await guild.emojis.create({ attachment: filePath, name: emojiName });
+                console.log(`Emoji ${emojiName} created!`);
+            }
+        }
+
+    } catch (error) {
+        console.error('Error creating emojis:', error);
+    }
+    const serverCount = client.guilds.cache.size;
+    client.user.setPresence({ activities: [{ name: `${serverCount} servers`, type: ActivityType.Watching }], status: 'online', });
+});
+
+client.on('guildDelete', guild => {
+    const serverCount = client.guilds.cache.size;
+    client.user.setPresence({ activities: [{ name: `${serverCount} servers`, type: ActivityType.Watching }], status: 'online', });
+});

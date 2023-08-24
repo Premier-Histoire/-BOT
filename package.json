@@ -1,5 +1,5 @@
 {
-  "name": "discord.js-v14-template",
+  "name": "eorzea_university_of_economics",
   "version": "3.0.0",
   "description": "An advanced Discord bot template for discord.js package",
   "main": "bot.js",
@@ -19,7 +19,7 @@
     "javascript",
     "v14"
   ],
-  "author": "✨Tolgchu✨#1452",
+  "author": "プルミエ商会",
   "dependencies": {
     "axios": "^0.27.2",
     "delay": "^5.0.0",

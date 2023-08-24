@@ -62,17 +62,16 @@ module.exports = {
             const response = await axios.get(`${baseURL}/search`, {
                 params: {
                     string: itemName,
-                    indexes: 'Recipe,item',
-                    language: "ja"
+                    indexes: 'Recipe',
+                    language: 'ja' // 検索結果は日本語で返します
                 }
             });
 
-            const itemID = response.data.Results[0].ID;
-            const recipeID = response.data.Results[1].ID;
+            const recipeID = response.data.Results[0].ID;
             const rawResponse = await axios.get(`https://xivapi.com/recipe/${recipeID}`);
-            const itemvalue = await axios.get(`https://universalis.app/api/${selectedDC}/${itemID}`)
+            const itemID = rawResponse.data.ItemResult.ID;
+            const itemvalue = await axios.get(`https://universalis.app/api/${targetServerOrDC}/${itemID}`)
             const itemvaluedata = itemvalue.data
-
             const ingredientPromises = [];
             const ingredients = {
                 '0': {
@@ -151,27 +150,35 @@ module.exports = {
                 };
             });
 
-            console.log(ingredients);
-
             const embedPages = generateEmbedPages(ingredients);
+
+            // 初期のボタンの無効化状態を決定
+            let currentIndex = 0;
+            const isOnlyOnePage = embedPages.length === 1;
+            const initialPreviousDisabled = isOnlyOnePage || currentIndex === 0;
+            const initialNextDisabled = isOnlyOnePage || currentIndex === embedPages.length - 1;
+
             const row = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('previous')
                         .setLabel('⮜')
                         .setStyle(ButtonStyle.Primary)
-                        .setDisabled(true),
+                        .setDisabled(initialPreviousDisabled),
                     new ButtonBuilder()
                         .setCustomId('next')
                         .setLabel('⮞')
                         .setStyle(ButtonStyle.Primary)
+                        .setDisabled(initialNextDisabled)
                 );
 
             await interaction.followUp({ embeds: [embedPages[0]], components: [row] });
 
+            // もしページが1ページしかない場合は、コレクタを作成せず終了
+            if (isOnlyOnePage) return;
+
             const collector = interaction.channel.createMessageComponentCollector({ time: 60000 });
 
-            let currentIndex = 0;
             collector.on('collect', async i => {
                 if (i.customId === 'previous') {
                     currentIndex--;
@@ -196,9 +203,28 @@ module.exports = {
                 await i.update({ embeds: [embedPages[currentIndex]], components: [newRow] });
             });
 
-            collector.on('end', collected => {
-                // ページネーションが終了したときの処理（例：ボタンを無効化するなど）
+            collector.on('end', async (collected, reason) => {
+                if (reason === 'time') {
+                    const disableRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('previous')
+                                .setLabel('⮜')
+                                .setStyle(ButtonStyle.Primary)
+                                .setDisabled(true),
+                            new ButtonBuilder()
+                                .setCustomId('next')
+                                .setLabel('⮞')
+                                .setStyle(ButtonStyle.Primary)
+                                .setDisabled(true)
+                        );
+
+                    await interaction.fetchReply().then(async (msg) => {
+                        await msg.edit({ embeds: [embedPages[0]], components: [disableRow] });
+                    }).catch(console.error);
+                }
             });
+
 
         } catch (error) {
             console.error('アイテム情報の取得中にエラーが発生しました:', error);
@@ -332,7 +358,7 @@ function generateEmbedPages(ingredients) {
                 const subIngredient = ingredient[rawKey];
                 if (subIngredient) {
                     names.push(subIngredient.name);
-                    amounts.push(subIngredient.amount);
+                    amounts.push(subIngredient.amount + "個");
                     subIngredientsTotalValue += subIngredient.value * subIngredient.amount;
                     mainIngredientValue = ingredient.value;
 
@@ -355,12 +381,12 @@ function generateEmbedPages(ingredients) {
                         }
 
                         if (matched && alternativeValue < subIngredient.value * subIngredient.amount) {
-                            values.push("★" + `${alternativeValue} ギル`);
+                            values.push("★" + `${alternativeValue}ギル`);
                         } else {
-                            values.push(`${subIngredient.value * subIngredient.amount} ギル`);
+                            values.push("　" + `${subIngredient.value * subIngredient.amount}ギル`);
                         }
                     } else {
-                        values.push(`${subIngredient.value * subIngredient.amount} ギル`);
+                        values.push("　" + `${subIngredient.value * subIngredient.amount}ギル`);
                     }
                 }
             }
