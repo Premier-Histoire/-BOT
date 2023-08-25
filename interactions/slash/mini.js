@@ -1,5 +1,7 @@
 const { ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, ChatInputCommandInteraction, SlashCommandStringOption, AutocompleteInteraction, ButtonBuilder, ButtonStyle, Client } = require("discord.js");
 const { random } = require("lodash");
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -14,12 +16,6 @@ module.exports = {
                 numbers.push(num);
             }
         }
-
-        console.log(`
-        ${numbers[0]},${numbers[1]},${numbers[2]},
-        ${numbers[3]},${numbers[4]},${numbers[5]},
-        ${numbers[6]},${numbers[7]},${numbers[8]}
-        `);
 
         const rows = [
             new ActionRowBuilder().addComponents(
@@ -249,10 +245,41 @@ module.exports = {
                     24: 3600
                 };
                 const mgp = mgpValues[sum];
-                await i.followUp(`:tada: 獲得MGPは ${mgp} です！:tada: `);
+
+                // 既存のMGPデータを読み込む
+                const mgpData = readMgpData();
+
+                // ユーザーのIDを取得する
+                const userId = i.user.id;
+
+                // ユーザーのMGPを更新する。JSONにユーザーが存在しない場合は、0 MGPからスタートする。
+                mgpData[userId] = (mgpData[userId] || 0) + mgp;
+
+                // 更新されたMGPデータを保存する
+                writeMgpData(mgpData);
+                const formattedMgp = numberWithCommas(mgp);
+                await i.followUp(`:tada: 獲得したMGPは ${formattedMgp} です！:tada: `);
             }
         }
         )
     }
 }
 
+const JSON_PATH = path.join(__dirname, '..', '..', 'mgpData.json');
+
+function readMgpData() {
+    try {
+        const rawData = fs.readFileSync(JSON_PATH, 'utf8');
+        return JSON.parse(rawData);
+    } catch (err) {
+        return {}; // ファイルが存在しないかエラーが発生した場合は空のオブジェクトを返す
+    }
+}
+
+function writeMgpData(data) {
+    fs.writeFileSync(JSON_PATH, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function numberWithCommas(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
