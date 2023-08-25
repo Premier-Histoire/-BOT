@@ -163,7 +163,7 @@ client
 client.on('ready', () => {
     setInterval(() => {
         const serverCount = client.guilds.cache.size;
-        console.log("Bot has started and is in the following servers:");
+        console.log("ボットが起動し、以下のサーバーにいる");
         client.guilds.cache.forEach(guild => {
             console.log(`${guild.name} (id: ${guild.id})`);
         });

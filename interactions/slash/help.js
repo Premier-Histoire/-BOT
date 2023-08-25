@@ -19,6 +19,7 @@ module.exports = {
                 { name: '/craft', value: '使用 `/craft` `アイテム名` `品質` `DC` `サーバー(任意)`\n アイテムの原価と利益計算を行います。' },
                 { name: '/history', value: '使用 `/history` `アイテム名` `DC` `サーバー(任意)`\n アイテムの取引履歴を表示します。' },
                 { name: '/level', value: '使用 `/level` `キャラ名` `DC` `サーバー`\n プレイヤーのレベルを表示します。' },
+                { name: '/mini', value: '使用 `/mini`\n ミニくじテンダーをプレイできます。' },
             )
             .setTimestamp()
             .setFooter({ text: 'Powerd by Universalis', iconURL: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://universalis.app/&size=16' });
