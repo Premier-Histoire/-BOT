@@ -21,7 +21,10 @@ module.exports = {
     async execute(interaction) {
         const mgpData = readMgpData();
         const userId = interaction.user.id;
-        const userMgp = mgpData[userId] || 0; // ユーザーがデータに存在しない場合は0を返す
+
+        // ユーザーがデータに存在しない場合は0を返す
+        const userMgp = (mgpData[userId] && mgpData[userId].mgp) || 0;
+
         const formattedMgp = numberWithCommas(userMgp); // ここでカンマ区切りに変換
         await interaction.reply(`あなたの現在のMGPは ${formattedMgp} です。`);
     }

@@ -2,6 +2,7 @@ const { ActionRowBuilder, EmbedBuilder, SlashCommandBuilder, ChatInputCommandInt
 const { random } = require("lodash");
 const fs = require('fs');
 const path = require('path');
+const JSON_PATH = path.join(__dirname, '..', '..', 'mgpData.json');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,6 +10,39 @@ module.exports = {
         .setDescription('ミニくじテンダー'),
 
     async execute(interaction) {
+        const userId = interaction.user.id;
+        const today = new Date().toISOString().split('T')[0];  // Format: YYYY-MM-DD
+        const currentTime = new Date().getTime();  // Current timestamp in milliseconds
+
+        // 既存のMGPデータを読み込む
+        const mgpData = readMgpData();
+        if (!mgpData[userId]) {
+            mgpData[userId] = { mgp: 0, lastPlayedDate: null, today: 0, timestamp: 0 };
+        }
+
+        // 今日プレイしたかどうかのチェック
+        if (mgpData[userId].lastPlayedDate !== today) {
+            mgpData[userId].today = 0;
+            mgpData[userId].lastPlayedDate = today;
+        }
+
+        // 3回以上プレイした場合、エラーメッセージを表示して終了
+        if (mgpData[userId].today >= 3) {
+            await interaction.reply("本日は既に3回プレイしました。明日またプレイしてください！");
+            return;
+        }
+
+        // 最後のプレイから1分未満の場合、エラーメッセージを表示して終了
+        if (currentTime - mgpData[userId].timestamp < 60 * 1000) { // 60,000 milliseconds = 1 minute
+            await interaction.reply("連続してプレイすることはできません。しばらく待ってから再度試してください。");
+            return;
+        }
+
+        // Update the last play timestamp and playsToday count for the user
+        mgpData[userId].timestamp = currentTime;
+        mgpData[userId].today += 1;
+        writeMgpData(mgpData);  // Save updated data        
+
         const numbers = [];
         while (numbers.length < 9) {
             const num = random(1, 9);
@@ -252,23 +286,33 @@ module.exports = {
                 // ユーザーのIDを取得する
                 const userId = i.user.id;
 
-                // ユーザーのMGPを更新する。JSONにユーザーが存在しない場合は、0 MGPからスタートする。
-                mgpData[userId] = (mgpData[userId] || 0) + mgp;
+                // ユーザーのMGPを更新する
+                if (!mgpData[userId]) {
+                    mgpData[userId] = { mgp: 0, today: 0, timestamp: 0 }; // Initialize if not exist
+                }
+                mgpData[userId].mgp += mgp;  // Add the earned MGP to the user's total
 
                 // 更新されたMGPデータを保存する
                 writeMgpData(mgpData);
+
                 const formattedMgp = numberWithCommas(mgp);
                 await i.followUp(`:tada: 獲得したMGPは ${formattedMgp} です！:tada: `);
+
+
+
             }
         }
         )
     }
 }
 
-const JSON_PATH = path.join(__dirname, '..', '..', 'mgpData.json');
-
 function readMgpData() {
     try {
+        // ファイルが存在しない場合は、新しいファイルを作成する
+        if (!fs.existsSync(JSON_PATH)) {
+            fs.writeFileSync(JSON_PATH, JSON.stringify({}, null, 2), 'utf8');
+        }
+
         const rawData = fs.readFileSync(JSON_PATH, 'utf8');
         return JSON.parse(rawData);
     } catch (err) {
